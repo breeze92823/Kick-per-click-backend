@@ -1,6 +1,6 @@
 import {
   CURRENCY_MAX, REBIRTH_MAX, LEVEL_MAX, PLAY_SECONDS_MAX, SPINS_MAX, BALL_COUNT, LEGEND_IDS,
-  INV_SLOTS_MAX, FREE_SPIN_MS, CLOCK_SLACK_MS,
+  INV_SLOTS_MAX, FREE_SPIN_SECONDS, CLOCK_SLACK_MS,
 } from "./constants.js";
 import type { PlayerDoc } from "./db.js";
 
@@ -44,7 +44,8 @@ export function sanitizeProgress(raw: unknown): Partial<PlayerDoc> | null {
   if (finite(raw.playtime)) out.playtime = clampInt(raw.playtime, PLAY_SECONDS_MAX);
   if (finite(raw.spins)) out.spins = clampInt(raw.spins, SPINS_MAX);
   if (finite(raw.invSlots)) out.invSlots = clampInt(raw.invSlots, INV_SLOTS_MAX);
-  if (finite(raw.freeAt)) out.freeAt = clampInt(raw.freeAt, Date.now() + FREE_SPIN_MS + CLOCK_SLACK_MS);
+  if (finite(raw.freeOnline)) out.freeOnline = clampInt(raw.freeOnline, FREE_SPIN_SECONDS);
+  if (finite(raw.lastSeen)) out.lastSeen = clampInt(raw.lastSeen, Date.now() + CLOCK_SLACK_MS);
   if (raw.owned !== undefined) {
     out.owned = sanitizeBalls(raw.owned);
     if (!out.owned.includes(0)) out.owned.unshift(0); // the starter ball is always owned

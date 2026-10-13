@@ -4,9 +4,9 @@ export const ROOM_MAX_CLIENTS = 50;
 // Where a player appears for everyone else before their first `pose` arrives (client SPAWN).
 export const SPAWN = { x: 0, y: 0.6, z: 0 };
 
-// Walkable bounds (client WORLD_BOUNDS is +-215), with a little slack: a forged pose cannot put a
+// Walkable bounds (client WORLD_BOUNDS is +-215, maxZ 625 for the 550 m lane), with a little slack: a forged pose cannot put a
 // player outside the world for everyone else to see.
-export const WORLD_BOUNDS = { minX: -225, maxX: 225, minZ: -225, maxZ: 225, minY: -40, maxY: 200 };
+export const WORLD_BOUNDS = { minX: -225, maxX: 225, minZ: -225, maxZ: 635, minY: -40, maxY: 200 };
 
 // Longest accepted strings.
 export const NAME_MAX = 64;
@@ -42,9 +42,9 @@ export const LEGEND_IDS: readonly string[] = [
 ];
 export const INV_SLOTS_MAX = LEGEND_IDS.length;
 
-// Client ECONOMY.freeSpinSeconds: `freeAt` (epoch ms the next free spin arrives) is never further
-// ahead than this plus clock slack.
-export const FREE_SPIN_MS = 15 * 60 * 1000;
+// Client ECONOMY.freeSpinSeconds: `freeOnline` (s played towards the next free spin) never exceeds it;
+// `lastSeen` (epoch ms) is never further ahead than clock slack.
+export const FREE_SPIN_SECONDS = 15 * 60;
 export const CLOCK_SLACK_MS = 10 * 60 * 1000;
 
 // The client's per-browser fallback id for players who are not signed in to Bloxity.

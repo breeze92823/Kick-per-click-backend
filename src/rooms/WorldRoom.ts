@@ -177,13 +177,28 @@ export class WorldRoom extends Room<{ state: WorldState }> {
   // else (WiFi blip, backgrounded tab) gets RECONNECT_SECONDS to reconnect with the same session.
   async onLeave(client: Client, code?: number) {
     if (code === CloseCode.CONSENTED) {
+      void this.stampLastSeen(client.sessionId);
       this.forgetSession(client.sessionId);
       return;
     }
     try {
       await this.allowReconnection(client, RECONNECT_SECONDS);
     } catch {
+      void this.stampLastSeen(client.sessionId);
       this.forgetSession(client.sessionId);
+    }
+  }
+
+  // Server-clock "last seen" for a player who has really gone (the client's own stamp can be up to
+  // a save interval old). Drives the 24h-away free spin on their next visit. Call before forgetSession.
+  private async stampLastSeen(sessionId: string) {
+    const userId = this.userIds.get(sessionId);
+    const players = getPlayers();
+    if (!userId || !players) return;
+    try {
+      await players.updateOne({ _id: userId }, { $set: { lastSeen: Date.now() } });
+    } catch (err) {
+      console.warn("[WorldRoom] stampLastSeen failed", err);
     }
   }
 

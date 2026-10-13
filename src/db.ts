@@ -22,7 +22,8 @@ export interface PlayerDoc {
   legend?: string; // equipped legend ('' = none)
   invSlots?: number;
   spins?: number; // Lucky Wheel spins in stock
-  freeAt?: number; // epoch ms the next free spin arrives
+  freeOnline?: number; // s played towards the next free spin
+  lastSeen?: number; // epoch ms of the last activity (24h+ away grants a free spin on return)
   version: number;
   updatedAt: Date;
 }
