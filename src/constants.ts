@@ -35,8 +35,8 @@ export const PLAY_SECONDS_MAX = 31_536_000; // ~1 year
 export const SPINS_MAX = 1_000_000;
 // Longest kick the lane allows (client LANE.length) with slack; bestDistance is metres.
 export const DISTANCE_MAX = 1000;
-// Client src/config.js TUTORIAL.steps: the onboarding runs steps 0..TUTORIAL_DONE_STEP (9 = finished).
-export const TUTORIAL_DONE_STEP = 9;
+// Client src/config.js TUTORIAL.steps: the onboarding runs steps 0..TUTORIAL_DONE_STEP (13 = finished).
+export const TUTORIAL_DONE_STEP = 13;
 // Profile picture URL (Bloxity `pfp`), relayed so other players can draw it.
 export const PFP_MAX_LEN = 512;
 
