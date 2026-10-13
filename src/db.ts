@@ -11,6 +11,9 @@ export interface PlayerDoc {
   username?: string;
   // Bloxity avatar JSON as last reported, so a board's top row can still be dressed offline.
   avatar?: string;
+  pfp?: string; // Bloxity profile picture URL as last reported
+  bestDistance?: number; // longest kick, metres
+  tutorialStep?: number; // new-player tutorial progress; a doc without it predates the tutorial (client treats it as finished)
   level?: number;
   kickPower?: number;
   wins?: number;

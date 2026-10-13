@@ -25,6 +25,8 @@ export const PlayerState = schema(
     // What the leaderboards rank (client stats.js): mirrored from saves.
     rebirths: t.float64().default(0),
     level: t.float64().default(1),
+    bestDistance: t.float64().default(0), // longest kick (m), mirrored from saves / live `kickBest`
+    pfp: t.string().default(""), // Bloxity profile picture URL ("" = none)
     playtime: t.float64().default(0),
   },
   "PlayerState",

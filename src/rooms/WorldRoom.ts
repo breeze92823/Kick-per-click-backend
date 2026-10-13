@@ -9,19 +9,26 @@ import {
   LEADERBOARD_ROWS,
   LEGEND_IDS,
   NAME_MAX,
+  PFP_MAX_LEN,
+  DISTANCE_MAX,
   POSE_MAX,
   RECONNECT_SECONDS,
   ROOM_MAX_CLIENTS,
   WORLD_BOUNDS,
 } from "../constants.js";
 import { getPlayers, type PlayerDoc } from "../db.js";
-import { sanitizeProgress } from "../sanitize.js";
+import { sanitizeProgress, resolveTutorialStep } from "../sanitize.js";
 
 const finite = (n: unknown): n is number => typeof n === "number" && Number.isFinite(n);
 const clamp = (n: number, min: number, max: number) => Math.min(max, Math.max(min, n));
 
 function sanitizeAvatar(raw: unknown): string {
   return typeof raw === "string" && raw.length <= AVATAR_MAX_LEN ? raw : "";
+}
+
+// Only plain http(s) URLs of sane length: the client draws it in an <img>.
+function sanitizePfp(raw: unknown): string {
+  return typeof raw === "string" && raw.length <= PFP_MAX_LEN && /^https?:\/\//i.test(raw) ? raw : "";
 }
 
 function sanitizeName(raw: unknown): string {
@@ -94,6 +101,19 @@ export class WorldRoom extends Room<{ state: WorldState }> {
       if (typeof msg?.avatar === "string" && msg.avatar.length <= AVATAR_MAX_LEN) p.avatar = msg.avatar;
       this.persistAvatar(client.sessionId, p);
     },
+    // Profile picture URL (Bloxity `pfp`), "" = none.
+    setPfp: (client: Client, msg: { pfp?: string }) => {
+      const p = this.state.players.get(client.sessionId);
+      if (!p || typeof msg?.pfp !== "string") return;
+      p.pfp = sanitizePfp(msg.pfp);
+      this.persistAvatar(client.sessionId, p);
+    },
+    // A kick just landed: shows the new best to everyone at once (the save follows, debounced).
+    kickBest: (client: Client, msg: { distance?: number }) => {
+      const p = this.state.players.get(client.sessionId);
+      if (!p || !finite(msg?.distance)) return;
+      p.bestDistance = Math.max(p.bestDistance, clamp(msg.distance, 0, DISTANCE_MAX));
+    },
     // Equipped football index; only indices the game knows are relayed.
     setBall: (client: Client, msg: { ball?: number }) => {
       const p = this.state.players.get(client.sessionId);
@@ -118,12 +138,16 @@ export class WorldRoom extends Room<{ state: WorldState }> {
       if (!userId) return;
       const players = getPlayers();
       if (!players) return; // Mongo unset/unreachable -- degrade silently
+      // The tutorial step only ever moves forward ($max), so a stale or replayed save can never
+      // bring a finished tutorial back.
+      const { tutorialStep, ...rest } = patch;
       try {
         await players.updateOne(
           { _id: userId },
           {
             // Display name comes from this connection's own PlayerState, not `msg`.
-            $set: { ...patch, username: p.username || "Player", ...(p.avatar ? { avatar: p.avatar } : {}), updatedAt: new Date() },
+            $set: { ...rest, username: p.username || "Player", ...(p.avatar ? { avatar: p.avatar } : {}), ...(p.pfp ? { pfp: p.pfp } : {}), updatedAt: new Date() },
+            ...(tutorialStep !== undefined && { $max: { tutorialStep } }),
             $setOnInsert: { version: 1 },
           },
           { upsert: true },
@@ -151,10 +175,11 @@ export class WorldRoom extends Room<{ state: WorldState }> {
     }, LEADERBOARD_REFRESH_MS);
   }
 
-  onJoin(client: Client, options?: { username?: string; userId?: string; avatar?: string }) {
+  onJoin(client: Client, options?: { username?: string; userId?: string; avatar?: string; pfp?: string }) {
     const p = new PlayerState();
     p.username = sanitizeName(options?.username);
     p.avatar = sanitizeAvatar(options?.avatar);
+    p.pfp = sanitizePfp(options?.pfp);
     this.state.players.set(client.sessionId, p);
 
     this.setUserId(client, p, options?.userId ?? "");
@@ -167,9 +192,9 @@ export class WorldRoom extends Room<{ state: WorldState }> {
   private persistAvatar(sessionId: string, p: PlayerState) {
     const userId = this.userIds.get(sessionId);
     const players = getPlayers();
-    if (!userId || !players || !p.avatar) return;
+    if (!userId || !players || !(p.avatar || p.pfp)) return;
     players
-      .updateOne({ _id: userId }, { $set: { avatar: p.avatar, username: p.username || "Player", updatedAt: new Date() }, $setOnInsert: { version: 1 } }, { upsert: true })
+      .updateOne({ _id: userId }, { $set: { avatar: p.avatar, ...(p.pfp ? { pfp: p.pfp } : {}), username: p.username || "Player", updatedAt: new Date() }, $setOnInsert: { version: 1, tutorialStep: 0 } }, { upsert: true })
       .catch((err) => console.warn("[WorldRoom] avatar save failed", err));
   }
 
@@ -207,6 +232,7 @@ export class WorldRoom extends Room<{ state: WorldState }> {
   private applyLive(p: PlayerState, patch: Partial<PlayerDoc>) {
     if (patch.rebirths !== undefined) p.rebirths = patch.rebirths;
     if (patch.level !== undefined) p.level = patch.level;
+    if (patch.bestDistance !== undefined) p.bestDistance = Math.max(p.bestDistance, patch.bestDistance);
     if (patch.playtime !== undefined) p.playtime = patch.playtime;
     if (patch.equipped !== undefined) p.ball = patch.equipped;
     if (patch.legend !== undefined) p.legend = patch.legend;
@@ -281,7 +307,8 @@ export class WorldRoom extends Room<{ state: WorldState }> {
       client.send("noProgress", { serverTime: Date.now() });
       return;
     }
-    const live = sanitizeProgress(doc) ?? {};
+    // A doc with no tutorialStep is a legacy save: it reads as finished so old players never see the tutorial.
+    const live = { ...(sanitizeProgress(doc) ?? {}), tutorialStep: resolveTutorialStep(doc) };
     this.applyLive(p, live);
     // serverTime lets the client judge the free-spin timer by the server clock.
     client.send("progress", { ...live, serverTime: Date.now() });
