@@ -37,8 +37,9 @@ describe("sanitizeProgress", () => {
     assert.strictEqual(sanitizeProgress({ legend: "" })!.legend, "");
   });
 
-  it("caps the free-spin timestamp so it cannot be pushed far into the future", () => {
-    const out = sanitizeProgress({ freeAt: Date.now() + 1e12 })!;
-    assert.ok(out.freeAt! <= Date.now() + 25 * 60 * 1000);
+  it("caps the free-spin progress and last-seen timestamp", () => {
+    const out = sanitizeProgress({ freeOnline: 1e9, lastSeen: Date.now() + 1e12 })!;
+    assert.strictEqual(out.freeOnline, 15 * 60);
+    assert.ok(out.lastSeen! <= Date.now() + 25 * 60 * 1000);
   });
 });

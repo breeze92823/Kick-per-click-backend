@@ -4,9 +4,9 @@ export const ROOM_MAX_CLIENTS = 50;
 // Where a player appears for everyone else before their first `pose` arrives (client SPAWN).
 export const SPAWN = { x: 0, y: 0.6, z: 0 };
 
-// Walkable bounds (client WORLD_BOUNDS is +-215), with a little slack: a forged pose cannot put a
+// Walkable bounds (client WORLD_BOUNDS is +-215, maxZ 625 for the 550 m lane), with a little slack: a forged pose cannot put a
 // player outside the world for everyone else to see.
-export const WORLD_BOUNDS = { minX: -225, maxX: 225, minZ: -225, maxZ: 225, minY: -40, maxY: 200 };
+export const WORLD_BOUNDS = { minX: -225, maxX: 225, minZ: -225, maxZ: 635, minY: -40, maxY: 200 };
 
 // Longest accepted strings.
 export const NAME_MAX = 64;
@@ -33,6 +33,12 @@ export const REBIRTH_MAX = 1_000_000;
 export const LEVEL_MAX = 1_000_000;
 export const PLAY_SECONDS_MAX = 31_536_000; // ~1 year
 export const SPINS_MAX = 1_000_000;
+// Longest kick the lane allows (client LANE.length) with slack; bestDistance is metres.
+export const DISTANCE_MAX = 1000;
+// Client src/config.js TUTORIAL.steps: the onboarding runs steps 0..TUTORIAL_DONE_STEP (13 = finished).
+export const TUTORIAL_DONE_STEP = 13;
+// Profile picture URL (Bloxity `pfp`), relayed so other players can draw it.
+export const PFP_MAX_LEN = 512;
 
 // Client config.js: BALLS has 21 entries (indices 0..20), LEGENDS ids, ECONOMY.invSlots.
 export const BALL_COUNT = 21;
@@ -42,9 +48,9 @@ export const LEGEND_IDS: readonly string[] = [
 ];
 export const INV_SLOTS_MAX = LEGEND_IDS.length;
 
-// Client ECONOMY.freeSpinSeconds: `freeAt` (epoch ms the next free spin arrives) is never further
-// ahead than this plus clock slack.
-export const FREE_SPIN_MS = 15 * 60 * 1000;
+// Client ECONOMY.freeSpinSeconds: `freeOnline` (s played towards the next free spin) never exceeds it;
+// `lastSeen` (epoch ms) is never further ahead than clock slack.
+export const FREE_SPIN_SECONDS = 15 * 60;
 export const CLOCK_SLACK_MS = 10 * 60 * 1000;
 
 // The client's per-browser fallback id for players who are not signed in to Bloxity.

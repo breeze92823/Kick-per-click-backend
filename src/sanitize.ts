@@ -1,6 +1,6 @@
 import {
   CURRENCY_MAX, REBIRTH_MAX, LEVEL_MAX, PLAY_SECONDS_MAX, SPINS_MAX, BALL_COUNT, LEGEND_IDS,
-  INV_SLOTS_MAX, FREE_SPIN_MS, CLOCK_SLACK_MS,
+  INV_SLOTS_MAX, FREE_SPIN_SECONDS, CLOCK_SLACK_MS, DISTANCE_MAX, TUTORIAL_DONE_STEP,
 } from "./constants.js";
 import type { PlayerDoc } from "./db.js";
 
@@ -39,12 +39,15 @@ export function sanitizeProgress(raw: unknown): Partial<PlayerDoc> | null {
   for (const key of ["kickPower", "wins"] as const) {
     if (finite(raw[key])) out[key] = clampNum(raw[key] as number, CURRENCY_MAX);
   }
+  if (finite(raw.bestDistance)) out.bestDistance = clampNum(raw.bestDistance, DISTANCE_MAX);
+  if (finite(raw.tutorialStep)) out.tutorialStep = clampInt(raw.tutorialStep, TUTORIAL_DONE_STEP);
   if (finite(raw.level)) out.level = clampInt(raw.level, LEVEL_MAX, 1);
   if (finite(raw.rebirths)) out.rebirths = clampInt(raw.rebirths, REBIRTH_MAX);
   if (finite(raw.playtime)) out.playtime = clampInt(raw.playtime, PLAY_SECONDS_MAX);
   if (finite(raw.spins)) out.spins = clampInt(raw.spins, SPINS_MAX);
   if (finite(raw.invSlots)) out.invSlots = clampInt(raw.invSlots, INV_SLOTS_MAX);
-  if (finite(raw.freeAt)) out.freeAt = clampInt(raw.freeAt, Date.now() + FREE_SPIN_MS + CLOCK_SLACK_MS);
+  if (finite(raw.freeOnline)) out.freeOnline = clampInt(raw.freeOnline, FREE_SPIN_SECONDS);
+  if (finite(raw.lastSeen)) out.lastSeen = clampInt(raw.lastSeen, Date.now() + CLOCK_SLACK_MS);
   if (raw.owned !== undefined) {
     out.owned = sanitizeBalls(raw.owned);
     if (!out.owned.includes(0)) out.owned.unshift(0); // the starter ball is always owned
@@ -55,4 +58,11 @@ export function sanitizeProgress(raw: unknown): Partial<PlayerDoc> | null {
   if (raw.legends !== undefined) out.legends = sanitizeLegends(raw.legends);
   if (typeof raw.legend === "string" && (raw.legend === "" || LEGEND_IDS.includes(raw.legend))) out.legend = raw.legend;
   return out;
+}
+
+// What loadProgress sends down as tutorialStep: a doc that predates the tutorial belongs to a
+// player who was never shown it, so it reads as finished. New accounts get a doc with an explicit
+// step (WorldRoom.ts persistAvatar) or no doc at all (noProgress -> the client starts at 0).
+export function resolveTutorialStep(doc: Partial<PlayerDoc>): number {
+  return finite(doc.tutorialStep) ? clampInt(doc.tutorialStep, TUTORIAL_DONE_STEP) : TUTORIAL_DONE_STEP;
 }
